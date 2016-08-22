@@ -271,7 +271,7 @@ class Thread:
             callback=callback
         )
 
-    def id(self):
+    def tid(self):
         """
         Thread ID
         :return: thread ID
@@ -645,7 +645,7 @@ class Breakpoint:
             if condition:
                 self.sb_breakpoint.SetCondition(condition)
             if thread and thread.valid():
-                self.sb_breakpoint.SetThreadID(thread.id())
+                self.sb_breakpoint.SetThreadID(thread.tid())
             if callback:
                 self.sb_breakpoint.SetScriptCallbackFunction(callback)
 
