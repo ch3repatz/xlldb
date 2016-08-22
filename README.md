@@ -1,6 +1,7 @@
 # XLLDB
 
 Version: 1.0.0 pre-alpha (under active development)
+
 by ch3repatz (ch3repatz@gmail.com)
 
 Release history:
