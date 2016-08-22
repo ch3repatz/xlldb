@@ -612,10 +612,18 @@ def xlldb_test_function(debugger, command, result, internal_dict):
     """
     Just a test LLDB command xlldbtest
     """
-    print '1. Debugger object:'
+    print 'Debugger object:'
     debugger_object = Debugger(debugger)
     if debugger_object.valid():
         print 'Valid'
+        print 'Command interpreter object:'
+        command_interpeter_object = debugger_object.command_interpreter()
+        if command_interpeter_object.valid():
+            print 'Valid. Executing command dis --pc:'
+            result = command_interpeter_object.execute_command('dis --pc')
+            print result.output() if result.succeeded() else result.error()
+        else:
+            print 'Invalid'
     else:
         print 'Invalid'
 
