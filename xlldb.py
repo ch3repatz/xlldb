@@ -96,6 +96,13 @@ class Target:
         """
         self.sb_target = sb_target
 
+    def breakpoints_count(self):
+        """
+        Number of breakpoints
+        :return: number of breakpoints or None (if self.valid() is None)
+        """
+        return self.sb_target.GetNumBreakpoints() if self.valid() else None
+
     def create_breakpoint_by_address(self, address, condition=None, thread=None, callback=None):
         """
         Create a breakpoint by an address
@@ -236,6 +243,13 @@ class Process:
         """
         return self.target().breakpoints() if self.valid() else None
 
+    def breakpoints_count(self):
+        """
+        Number of breakpoints
+        :return: number of breakpoints or None (if self.valid() is None)
+        """
+        return self.target().breakpoints_count() if self.valid() else None
+
 
 class Thread:
     """
@@ -352,6 +366,20 @@ class Thread:
         """
         zero_frame = self.zero_frame()
         return zero_frame.fp() if zero_frame.valid() else None
+
+    def thread_breakpoints(self):
+        """
+        A list of breakpoints specific for this thread
+        :return: a list [...] of breakpoints specific for this thread
+        """
+        breakpoints = self.target().breakpoints() if self.valid() else None
+        if breakpoints:
+            thread_breakpoints = []
+            for breakpoint in breakpoints:
+                if breakpoint.thread(self.process()).tid() == self.tid():
+                    thread_breakpoints.append(breakpoint)
+            return thread_breakpoints
+        return breakpoints
 
 
 class Frame:
@@ -673,6 +701,15 @@ class Breakpoint:
             for i in range(0, self.sb_breakpoint.GetNumLocations())
         ] if self.valid() else None
 
+    def thread(self, process):
+        """
+        The breakpoint's thread
+        :param process: a Process class instance
+        :return: breakpoint's thread as Thread class instance
+        """
+        return Thread(process.sb_process.GetThreadByID(self.sb_breakpoint.GetThreadID())) \
+            if process and process.valid() and self.valid() else None
+
 
 class BreakpointLocation:
     """
@@ -709,6 +746,21 @@ class BreakpointLocation:
         """
         return self.sb_breakpoint_location.GetCondition() if self.valid() else None
 
+    def breakpoint(self):
+        """
+        The breakpoint location's breakpoint
+        :return: the breakpoint location's breakpoint as Breakpoint class instance
+        """
+        return Breakpoint(self.sb_breakpoint_location.GetBreakpoint()) if self.valid() else None
+
+    def thread(self, process):
+        """
+        The breakpoint location's thread
+        :param process: a Process class instance
+        :return: breakpoint location's thread as Thread class instance
+        """
+        return self.breakpoint().thread(process)
+
 
 def xlldb_test_function(debugger, command, result, internal_dict):
     """
@@ -716,12 +768,13 @@ def xlldb_test_function(debugger, command, result, internal_dict):
     """
     # TODO: THIS FUNCTION WILL BE REMOVED IN A FINAL VERSION!
     dbg = Debugger(debugger)
-    print dbg.selected_target().create_breakpoint_by_address(
-        0x195ecc0a0,
-        thread=dbg.selected_target().process().selected_thread(),
-        condition='$x0==1',
-        callback='xlldb.callbackfunct'
-    )
+    thr = dbg.selected_target().process().selected_thread()
+    thr.create_thread_breakpoint_by_address(0x189073c8c)
+    brp = thr.thread_breakpoints()
+    if brp:
+        for b in brp:
+            print hex(b.thread(dbg.selected_target().process()).tid())
+
 
 def __lldb_init_module(debugger, internal_dict):
     """
