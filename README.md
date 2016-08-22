@@ -6,7 +6,7 @@ by ch3repatz (ch3repatz@gmail.com)
 
 Release history:
 
-* 1.0.0a  2016-08-20  Initial release (2016-08-22 moved to GitHub)
+* 1.0.0a  2016-08-20  Initial release (moved to GitHub at 2016-08-22)
 
 ## About
 
