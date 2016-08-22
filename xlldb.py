@@ -609,32 +609,20 @@ class Breakpoint:
 
 
 def xlldb_test_function(debugger, command, result, internal_dict):
-    dbg = Debugger(debugger)
-    # Is debugger valid?
-    if dbg.valid():
-        # Yes! Try to execute
-        # (lldb) target list
-        print 'Debugger: Valid\n'
-        print 'Trying to execute "target list" and read output using debugger\'s command interpreter:\n'
-        command_interpreter = dbg.command_interpreter()
-        if command_interpreter.valid():
-            result = command_interpreter.execute_command('target list')
-            if result.succeeded():
-                # If succeeded, print output
-                print result.output()
-            else:
-                # Otherwise, print error message
-                print result.error()
-        else:
-            # Command interpreter is not valid, sorry :(
-            print 'Command interpreter: Invalid'
-        # Now, get targets count and, actually, the targets via Debuggers class methods
-        print 'Looking for targets using Debugger class methods:\n'
-        print 'Targets count:', dbg.targets_count()
+    """
+    Just a test LLDB command xlldbtest
+    """
+    print '1. Debugger object:'
+    debugger_object = Debugger(debugger)
+    if debugger_object.valid():
+        print 'Valid'
     else:
-        # Debugger is not valid :(
-        print 'Debugger: Invalid'
+        print 'Invalid'
+
 
 
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f xlldb.xlldb_test_function testxlldb')
+    """
+    Adding the test command xlldbtest
+    """
+    debugger.HandleCommand('command script add -f xlldb.xlldb_test_function xlldbtest')
