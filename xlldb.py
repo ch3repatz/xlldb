@@ -96,6 +96,32 @@ class Target:
         """
         self.sb_target = sb_target
 
+    def create_breakpoint_by_address(self, address, condition=None, thread=None, callback=None):
+        """
+        Create a breakpoint by an address
+        :param address: the address
+        :param condition: condition as a Python string
+        :param thread: an instance of Thread class
+        :param callback: a callback function or static method
+        :return: True if succeeded, False otherwise
+        """
+        # Create a breakpoint
+        return Breakpoint(
+            self.sb_target.BreakpointCreateByAddress(address),
+            condition=condition,
+            thread=thread,
+            callback=callback
+        ).valid()
+
+    def breakpoints(self):
+        """
+        A list of breakpoints
+        :return: a list [...] of breakpoints
+        """
+        return [
+            Breakpoint(self.sb_target.GetBreakpointAtIndex(i)) for i in range(0, self.sb_target.GetNumBreakpoints())
+        ] if self.valid() else None
+
     def valid(self):
         """
         Check if the target is valid
@@ -144,6 +170,22 @@ class Process:
         """
         return self.sb_process.IsValid() if self.sb_process else False
 
+    def create_breakpoint_by_address(self, address, condition=None, thread=None, callback=None):
+        """
+        Create a breakpoint by an address
+        :param address: the address
+        :param condition: condition as a Python string
+        :param thread: an instance of Thread class
+        :param callback: a callback function or static method
+        :return: True if succeeded, False otherwise
+        """
+        return self.target().create_breakpoint_by_address(
+            address,
+            condition=condition,
+            thread=thread,
+            callback=callback
+        )
+
     def target(self):
         """
         Get the target
@@ -180,6 +222,20 @@ class Process:
         """
         return self.sb_process.GetNumThreads() if self.valid() else None
 
+    def pid(self):
+        """
+        Process id
+        :return: process id
+        """
+        return self.sb_process.GetProcessID() if self.valid() else None
+
+    def breakpoints(self):
+        """
+        A list of breakpoints
+        :return: a list [...] of breakpoints
+        """
+        return self.target().breakpoints() if self.valid() else None
+
 
 class Thread:
     """
@@ -199,6 +255,21 @@ class Thread:
         :return: True if valid, false if is not valid or self.sb_thread is None
         """
         return self.sb_thread.IsValid() if self.sb_thread else False
+
+    def create_thread_breakpoint_by_address(self, address, condition=None, callback=None):
+        """
+        Create a breakpoint by an address
+        :param address: the address
+        :param condition: condition as a Python string
+        :param callback: a callback function or static method
+        :return: True if succeeded, False otherwise
+        """
+        return self.target().create_breakpoint_by_address(
+            address,
+            condition=condition,
+            thread=self,
+            callback=callback
+        )
 
     def id(self):
         """
@@ -561,7 +632,7 @@ class Breakpoint:
     The class covers SBBreakpoint (http://lldb.llvm.org/cpp_reference/html/classlldb_1_1SBBreakpoint.html)
     """
 
-    def __init__(self, sb_breakpoint, condition=None, thread=None, callback=None):
+    def __init__(self, sb_breakpoint=None, condition=None, thread=None, callback=None):
         """
         Init the object
         :param sb_breakpoint: an instance of SBBreakpoint class
@@ -577,7 +648,6 @@ class Breakpoint:
                 self.sb_breakpoint.SetThreadID(thread.id())
             if callback:
                 self.sb_breakpoint.SetScriptCallbackFunction(callback)
-                self._callback = callback
 
     def valid(self):
         """
@@ -593,44 +663,69 @@ class Breakpoint:
         """
         return self.sb_breakpoint.GetCondition() if self.valid() else None
 
-    def thread(self):
+    def locations(self):
         """
-        Breakpoint's thread if any
-        :return: an instance of Thread class or None
+        A list [...] of breakpoint's locations
+        :return: list [...] of breakpoint's locations
         """
-        return Thread(self.sb_breakpoint.GetThreadID()) if self.valid() else None
+        return [
+            BreakpointLocation(self.sb_breakpoint.GetLocationAtIndex(i))
+            for i in range(0, self.sb_breakpoint.GetNumLocations())
+        ] if self.valid() else None
 
-    def callback(self):
+
+class BreakpointLocation:
+    """
+    The class covers SBBreakpointLocation
+    (http://lldb.llvm.org/cpp_reference/html/classlldb_1_1SBBreakpointLocation.html)
+    """
+
+    def __init__(self, sb_breakpoint_location=None):
         """
-        Breakpoint's script callback if any
-        :return: breakpoint's script callback (if any) as a Python string
+        Initialisation
+        :param sb_breakpoint_location: an instance of SBBreakpointLocation class
+        :return:
         """
-        return self._callback if self.valid() else None
+        self.sb_breakpoint_location = sb_breakpoint_location
+
+    def valid(self):
+        """
+        Check if the breakpoint is valid
+        :return: True if valid, false if is not valid or self.sb_breakpoint is None
+        """
+        return self.sb_breakpoint_location.IsValid() if self.sb_breakpoint_location else False
+
+    def load_address(self):
+        """
+        Getting location load address
+        :return: location load address
+        """
+        return self.sb_breakpoint_location.GetLoadAddress() if self.valid() else None
+
+    def condition(self):
+        """
+        Breakpoint location condition if any
+        :return: breakpoint location condition as Python string
+        """
+        return self.sb_breakpoint_location.GetCondition() if self.valid() else None
 
 
 def xlldb_test_function(debugger, command, result, internal_dict):
     """
     Just a test LLDB command xlldbtest
     """
-    print 'Debugger object:'
-    debugger_object = Debugger(debugger)
-    if debugger_object.valid():
-        print 'Valid'
-        print 'Command interpreter object:'
-        command_interpeter_object = debugger_object.command_interpreter()
-        if command_interpeter_object.valid():
-            print 'Valid. Executing command dis --pc:'
-            result = command_interpeter_object.execute_command('dis --pc')
-            print result.output() if result.succeeded() else result.error()
-        else:
-            print 'Invalid'
-    else:
-        print 'Invalid'
-
-
+    # TODO: THIS FUNCTION WILL BE REMOVED IN A FINAL VERSION!
+    dbg = Debugger(debugger)
+    print dbg.selected_target().create_breakpoint_by_address(
+        0x195ecc0a0,
+        thread=dbg.selected_target().process().selected_thread(),
+        condition='$x0==1',
+        callback='xlldb.callbackfunct'
+    )
 
 def __lldb_init_module(debugger, internal_dict):
     """
     Adding the test command xlldbtest
     """
+    # TODO: THIS FUNCTION WILL BE REMOVED IN A FINAL VERSION!
     debugger.HandleCommand('command script add -f xlldb.xlldb_test_function xlldbtest')
